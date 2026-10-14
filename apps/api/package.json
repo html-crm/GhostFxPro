@@ -1,0 +1,27 @@
+{
+  "name": "@ghostfx/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GhostFxPro HTTP API: auth, sessions, MFA, admin, RBAC.",
+  "main": "./src/index.ts",
+  "scripts": {
+    "start": "node --import tsx src/server.ts",
+    "dev": "node --import tsx src/dev-server.ts",
+    "test": "node --import tsx --test test/auth.test.ts test/admin.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ghostfx/security": "*",
+    "fastify": "^5.2.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@ghostfx/db": "*",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

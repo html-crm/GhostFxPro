@@ -1,0 +1,22 @@
+{
+  "name": "ghostfxpro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GhostFxPro - multi-chain crypto trading platform (correctness-first build).",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "db:test": "npm run test -w @ghostfx/db",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

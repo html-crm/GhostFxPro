@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+.next/
+out/
+target/
+
+# test / runtime artifacts
+coverage/
+*.tsbuildinfo
+.pglite-data/
+tmp/
+*.log
+
+# env & secrets - never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
