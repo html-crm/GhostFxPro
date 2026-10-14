@@ -3,41 +3,74 @@
 Production-grade multi-chain crypto trading platform. Built **correctness-first**,
 then security, observability, and finally features and visual polish.
 
-> **Status: Phase 1-2 in progress.** This repository is being built in documented
-> phases (see `docs/ROADMAP.md`). Nothing in this repo submits real trades, and
-> live execution is disabled by default.
+> **Status: Phases 1-4 in progress.** Nothing in this repo submits real trades.
+> Live execution is disabled by default. See `docs/ROADMAP.md`.
 
-## Start here
+## Quick start (local)
 
-- `docs/INSPECTION.md` - repository inspection and environmental reality check.
-- `docs/ARCHITECTURE.md` - system architecture, authority model, execution lifecycle.
-- `docs/DATABASE.md` - identity model, ERD, and accounting isolation rules.
-- `docs/ROADMAP.md` - phased delivery plan and current status.
+```bash
+npm install
+npm run dev
+```
+
+Then open:
+
+- **Web UI:** http://localhost:3000
+- **API:** http://127.0.0.1:4000 (`GET /health`)
+
+The API dev server uses **PGlite** (file-persisted PostgreSQL/WASM) in
+`.pglite-data/` — no external database required. On first boot it prints a
+**single-use invitation token** for the Super Admin. Open the web UI, accept the
+invitation, enable MFA, and activate the account.
+
+### Individual services
+
+```bash
+npm run dev:api   # API only  (http://127.0.0.1:4000)
+npm run dev:web   # web only  (http://localhost:3000)
+```
+
+## Tests
+
+```bash
+npm test          # all workspaces
+npm run db:test   # accounting isolation tests only
+```
+
+Tests run against **PGlite** (a real single-process PostgreSQL build compiled to
+WASM), so the SQL and constraints exercised are genuine PostgreSQL semantics.
 
 ## Layout
 
 ```
-GhostFxPro-Main/
-  docs/                     architecture & decision records
-  packages/
-    db/                     PostgreSQL schema, migrations, and accounting tests
-  apps/                     (planned) api server + web frontend
+docs/                     architecture & decision records
+packages/db/              PostgreSQL schema, migrations, accounting tests
+packages/security/        scrypt, TOTP, AES-GCM, RBAC
+apps/api/                 Fastify HTTP API (auth, sessions, MFA, admin)
+apps/web/                 Next.js trading terminal UI
+scripts/dev.mjs           runs API + web together
 ```
 
-## Prerequisites (current environment)
+## Environment (production entrypoint)
 
-- Node.js >= 20 (present: v22)
-- Rust toolchain (present: 1.95) - for the execution engine, phased in later
-- No Docker / PostgreSQL / Python in the current environment. See
-  `docs/INSPECTION.md` for how this is handled and what is deferred.
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `MFA_ENCRYPTION_KEY` | 32-byte key (hex or base64) for TOTP secret encryption |
+| `SESSION_TTL_MS` | Session lifetime (default 12h) |
+| `PORT`, `HOST` | API listen address |
 
-## Running the accounting tests
+The production entrypoint (`apps/api/src/server.ts`) uses `pg` and requires a
+real PostgreSQL server. It is **UNTESTED** in the current environment (no
+PostgreSQL installed). The PGlite dev server is exercised instead.
 
-```bash
-npm install
-npm run db:test
-```
+## Current status
 
-Tests run against **PGlite** (a real single-process PostgreSQL build compiled to
-WASM), so the SQL and constraints exercised are genuine PostgreSQL semantics and
-require no external database server.
+| Area | Status |
+| --- | --- |
+| Trade-identity schema + accounting isolation | Implemented, tested (13 tests) |
+| Security primitives (scrypt/TOTP/AES-GCM/RBAC) | Implemented, tested (20 tests) |
+| Auth, sessions, MFA, admin, bootstrap | Implemented, tested (25 tests) |
+| Web UI (auth, dashboard, admin, MFA setup) | Implemented, verified running |
+| Market data / strategy engine / execution | Not implemented (Phases 5-9) |
+| Python AI Brain | Blocked (no Python runtime) |

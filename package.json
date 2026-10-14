@@ -8,6 +8,9 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "npm run dev -w @ghostfx/api",
+    "dev:web": "npm run dev -w @ghostfx/web",
     "test": "npm run test --workspaces --if-present",
     "db:test": "npm run test -w @ghostfx/db",
     "typecheck": "npm run typecheck --workspaces --if-present"
