@@ -1,9 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
+import { MockProvider, type MarketDataProvider } from "@ghostfx/bot";
 import { migrate } from "@ghostfx/db";
 import { buildApp, type AppConfig } from "../src/app.ts";
 import type { SqlExecutor } from "../src/db.ts";
+
+export { MockProvider };
 
 export interface TestApp {
   app: FastifyInstance;
@@ -13,7 +16,12 @@ export interface TestApp {
   close: () => Promise<void>;
 }
 
-export async function makeTestApp(): Promise<TestApp> {
+export interface TestAppOptions {
+  market?: MarketDataProvider;
+  now?: () => number;
+}
+
+export async function makeTestApp(opts: TestAppOptions = {}): Promise<TestApp> {
   const pglite = new PGlite();
   await migrate(pglite);
   const db: SqlExecutor = {
@@ -26,7 +34,12 @@ export async function makeTestApp(): Promise<TestApp> {
     sessionTtlMs: 60 * 60 * 1000,
     mfaEncryptionKey: randomBytes(32),
   };
-  const app = buildApp({ db, config });
+  const app = buildApp({
+    db,
+    config,
+    market: opts.market ?? new MockProvider({}),
+    now: opts.now,
+  });
   await app.ready();
   return {
     app,

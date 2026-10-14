@@ -4,11 +4,13 @@ import Fastify, {
   type FastifyRequest,
 } from "fastify";
 import { isAuthorized, type Permission, type Role, type UserStatus } from "@ghostfx/security";
+import { DexScreenerProvider, type MarketDataProvider } from "@ghostfx/bot";
 import { toAuthUser, type SqlExecutor } from "./db.ts";
 import { authenticateSession } from "./services/sessions.ts";
 import { bearer, fail } from "./http.ts";
 import { registerAuthRoutes } from "./routes/auth.ts";
 import { registerAdminRoutes } from "./routes/admin.ts";
+import { registerTradingRoutes } from "./routes/trading.ts";
 
 export interface AppConfig {
   sessionTtlMs: number;
@@ -18,6 +20,10 @@ export interface AppConfig {
 export interface AppDeps {
   db: SqlExecutor;
   config: AppConfig;
+  /** Market-data source for paper trading. Defaults to DEX Screener. */
+  market?: MarketDataProvider;
+  /** Injected clock for deterministic tests. */
+  now?: () => number;
 }
 
 export type PreHandler = (
@@ -28,6 +34,8 @@ export type PreHandler = (
 export interface RouteContext {
   db: SqlExecutor;
   config: AppConfig;
+  market: MarketDataProvider;
+  now: () => number;
   authenticate: PreHandler;
   requirePermission: (permission: Permission) => PreHandler;
 }
@@ -35,6 +43,8 @@ export interface RouteContext {
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: false });
   const { db, config } = deps;
+  const market = deps.market ?? new DexScreenerProvider();
+  const now = deps.now ?? (() => Date.now());
 
   const authenticate: PreHandler = async (req, reply) => {
     const token = bearer(req);
@@ -63,12 +73,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       }
     };
 
-  const ctx: RouteContext = { db, config, authenticate, requirePermission };
+  const ctx: RouteContext = { db, config, market, now, authenticate, requirePermission };
 
   app.get("/health", async () => ({ status: "ok" }));
 
   registerAuthRoutes(app, ctx);
   registerAdminRoutes(app, ctx);
+  registerTradingRoutes(app, ctx);
 
   return app;
 }

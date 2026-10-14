@@ -491,3 +491,54 @@ table.data tbody tr:hover {
   color: var(--pos);
   border: 1px solid rgba(38, 194, 129, 0.4);
 }
+
+/* ----------------------------------------------------------------- trading -- */
+.right {
+  text-align: right;
+}
+td.right,
+th.right {
+  text-align: right;
+}
+.alert.pos {
+  color: var(--pos);
+  border-color: rgba(38, 194, 129, 0.4);
+  background: rgba(38, 194, 129, 0.08);
+}
+.btn.danger {
+  color: var(--neg);
+  border-color: rgba(240, 82, 107, 0.4);
+  background: rgba(240, 82, 107, 0.08);
+}
+.input,
+.input-sm {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.input-sm {
+  padding: 6px 8px;
+  font-size: 12.5px;
+  width: 110px;
+}
+.input:focus,
+.input-sm:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
+  outline: none;
+}
+.row-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row-actions form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}

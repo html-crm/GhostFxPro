@@ -171,3 +171,119 @@ export async function changeRoleAction(formData: FormData): Promise<void> {
   });
   revalidatePath("/admin/users");
 }
+
+// ---------------------------------------------------------------------------
+// Paper trading (dry-run only).
+// ---------------------------------------------------------------------------
+
+function revalidateTrading(): void {
+  revalidatePath("/dashboard");
+  revalidatePath("/positions");
+  revalidatePath("/portfolio");
+  revalidatePath("/markets");
+  revalidatePath("/history");
+}
+
+export async function openPositionAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await getToken();
+  if (!token) return { error: "not_authenticated" };
+
+  const chain = String(formData.get("chain") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const symbol = String(formData.get("symbol") ?? "").trim();
+  const decimals = Number(formData.get("decimals"));
+  const notionalQuote = String(formData.get("notionalQuote") ?? "").trim();
+  const pricePerToken = String(formData.get("pricePerToken") ?? "").trim();
+
+  if (!chain || !address || !symbol) return { error: "Token details are required." };
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) {
+    return { error: "Decimals must be an integer between 0 and 36." };
+  }
+  if (!notionalQuote || !pricePerToken) {
+    return { error: "Notional and entry price are required." };
+  }
+
+  const res = await apiFetch<{ error?: string }>("/trading/positions", {
+    method: "POST",
+    token,
+    body: {
+      token: { chain, address, symbol, decimals },
+      notionalQuote,
+      pricePerToken,
+    },
+  });
+  if (!res.ok) {
+    const code = (res.data as { error?: string } | null)?.error ?? "open_failed";
+    if (code === "insufficient_funds") return { error: "Insufficient simulated balance." };
+    if (code === "account_not_approved") return { error: "Your account is not approved." };
+    return { error: "Could not open the position." };
+  }
+  revalidateTrading();
+  return { ok: true };
+}
+
+export async function evaluatePositionAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const tradeId = String(formData.get("tradeId"));
+  const price = String(formData.get("price") ?? "").trim();
+  await apiFetch(`/trading/positions/${tradeId}/evaluate`, {
+    method: "POST",
+    token,
+    body: price ? { price } : {},
+  });
+  revalidateTrading();
+}
+
+export async function closePositionAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const tradeId = String(formData.get("tradeId"));
+  const price = String(formData.get("price") ?? "").trim();
+  if (!price) return;
+  await apiFetch(`/trading/positions/${tradeId}/close`, {
+    method: "POST",
+    token,
+    body: { price },
+  });
+  revalidateTrading();
+}
+
+/**
+ * Runs one bot iteration: fetch a quote for each open paper position and
+ * evaluate it. Dry-run only.
+ */
+export async function runTickAction(): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  await apiFetch("/trading/tick", { method: "POST", token });
+  revalidateTrading();
+}
+
+export async function addTokenAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await getToken();
+  if (!token) return { error: "not_authenticated" };
+  const chain = String(formData.get("chain") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const symbol = String(formData.get("symbol") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const decimals = Number(formData.get("decimals"));
+  if (!chain || !address || !symbol) return { error: "Chain, address and symbol are required." };
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) {
+    return { error: "Decimals must be an integer between 0 and 36." };
+  }
+  const res = await apiFetch<{ error?: string }>("/trading/tokens", {
+    method: "POST",
+    token,
+    body: { chain, address, symbol, decimals, ...(name ? { name } : {}) },
+  });
+  if (!res.ok) return { error: "Could not add the token." };
+  revalidatePath("/markets");
+  return { ok: true };
+}
