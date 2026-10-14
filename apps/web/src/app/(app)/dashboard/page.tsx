@@ -1,14 +1,19 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, isAdmin } from "@/lib/session";
 import { apiFetch } from "@/lib/api";
-import { fetchPortfolio, fetchPositions } from "@/lib/trading";
-import { runTickAction } from "@/lib/actions";
+import { fetchPortfolio, fetchPositions, fetchBotStatus } from "@/lib/trading";
+import { runTickAction, startBotAction, stopBotAction } from "@/lib/actions";
 
 function money(v: string | undefined): string {
   if (v === undefined) return "—";
   const n = Number(v);
   if (!Number.isFinite(n)) return v;
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+function time(ms: number | null): string {
+  if (ms === null) return "—";
+  return new Date(ms).toLocaleTimeString("en-US", { hour12: false });
 }
 
 export default async function DashboardPage() {
@@ -19,8 +24,10 @@ export default async function DashboardPage() {
   const apiUp = health.ok && health.data?.status === "ok";
 
   const approved = user.status === "APPROVED";
+  const admin = isAdmin(user);
   const portfolio = approved ? await fetchPortfolio() : null;
   const openPositions = approved ? await fetchPositions("OPEN") : [];
+  const bot = approved ? await fetchBotStatus() : null;
   const pnlClass = (v: string | undefined) =>
     v && Number(v) > 0 ? "pos" : v && Number(v) < 0 ? "neg" : "";
 
@@ -92,6 +99,77 @@ export default async function DashboardPage() {
           <div className="stat-sub">Mark-to-last price</div>
         </div>
       </div>
+
+      {approved && bot ? (
+        <div className="card">
+          <div className="card-title">
+            Bot engine
+            <span className={`badge ${bot.running ? "pos" : ""}`}>
+              {bot.running ? "running" : "stopped"}
+            </span>
+          </div>
+          <div className="grid cols-4">
+            <div className="stat">
+              <div className="stat-label">Last tick</div>
+              <div className="stat-value" style={{ fontSize: 18 }}>
+                {time(bot.lastTickAt)}
+              </div>
+              <div className="stat-sub">{bot.tickCount} ticks total</div>
+            </div>
+            <div className="stat">
+              <div className="stat-label">Next tick</div>
+              <div className="stat-value" style={{ fontSize: 18 }}>
+                {bot.running ? time(bot.nextTickAt) : "—"}
+              </div>
+              <div className="stat-sub">Every {Math.round(bot.intervalMs / 1000)}s</div>
+            </div>
+            <div className="stat">
+              <div className="stat-label">Last result</div>
+              <div className="stat-value" style={{ fontSize: 18 }}>
+                {bot.lastResult ? bot.lastResult.evaluated : "—"}
+              </div>
+              <div className="stat-sub">
+                {bot.lastResult
+                  ? `${bot.lastResult.closed} closed · ${bot.lastResult.skipped} skipped`
+                  : "no tick yet"}
+              </div>
+            </div>
+            <div className="stat">
+              <div className="stat-label">Status</div>
+              <div className={`stat-value ${bot.lastError ? "neg" : ""}`} style={{ fontSize: 18 }}>
+                {bot.lastError ? "error" : bot.inFlight ? "ticking…" : "healthy"}
+              </div>
+              <div className="stat-sub">{bot.lastError ?? "dry-run only"}</div>
+            </div>
+          </div>
+          <div className="row-actions" style={{ marginTop: 14, justifyContent: "flex-start" }}>
+            {admin ? (
+              bot.running ? (
+                <form action={stopBotAction}>
+                  <button className="btn btn-sm danger" type="submit">
+                    Stop engine
+                  </button>
+                </form>
+              ) : (
+                <form action={startBotAction}>
+                  <button className="btn btn-sm btn-primary" type="submit">
+                    Start engine
+                  </button>
+                </form>
+              )
+            ) : (
+              <span className="muted" style={{ fontSize: 12.5 }}>
+                Only administrators can start or stop the engine.
+              </span>
+            )}
+            <form action={runTickAction}>
+              <button className="btn btn-sm" type="submit">
+                Run one tick now
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       {approved ? (
         <div className="card">

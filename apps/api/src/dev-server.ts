@@ -10,7 +10,7 @@ import type { SqlExecutor } from "./db.ts";
 import { seedPermissions } from "./services/permissions.ts";
 import { bootstrapSuperAdmin } from "./services/bootstrap.ts";
 import { findUserByEmail, normaliseEmail } from "./services/users.ts";
-import { runTick } from "./services/paper.ts";
+import { BotRunner } from "./services/bot-runner.ts";
 
 /**
  * Development entrypoint backed by PGlite (file-persisted PostgreSQL/WASM).
@@ -43,24 +43,42 @@ async function main(): Promise<void> {
   if (process.env.DEV_SEED_USER) {
     const seedEmail = normaliseEmail(process.env.DEV_SEED_USER);
     const seedPassword = process.env.DEV_SEED_PASSWORD ?? "demo-password-1";
+    const seedRole = (process.env.DEV_SEED_ROLE ?? "USER").toUpperCase();
+    if (seedRole !== "USER" && seedRole !== "ADMIN" && seedRole !== "SUPER_ADMIN") {
+      throw new Error(`invalid DEV_SEED_ROLE: ${seedRole}`);
+    }
     const existing = await findUserByEmail(db, seedEmail);
     if (!existing) {
       await db.query(
         `INSERT INTO users (email, display_name, password_hash, role, status, email_verified)
-         VALUES ($1, $2, $3, 'USER', 'APPROVED', true)`,
-        [seedEmail, "Demo Trader", hashPassword(seedPassword)],
+         VALUES ($1, $2, $3, $4::user_role, 'APPROVED', true)`,
+        [seedEmail, "Demo Trader", hashPassword(seedPassword), seedRole],
       );
       console.log(
-        `[api] DEV seed user ${seedEmail} (password: ${seedPassword}) — APPROVED`,
+        `[api] DEV seed user ${seedEmail} (role ${seedRole}, password: ${seedPassword}) — APPROVED`,
       );
     } else {
       console.log(`[api] DEV seed user ${seedEmail} already exists`);
     }
   }
 
+  const provider = new DexScreenerProvider();
+  const bot = new BotRunner({
+    db,
+    provider,
+    intervalMs: Number(process.env.PAPER_ENGINE_INTERVAL_MS ?? 30_000),
+    onTick: (s) =>
+      console.log(
+        s.lastError
+          ? `[paper] tick #${s.tickCount} failed: ${s.lastError}`
+          : `[paper] tick #${s.tickCount} evaluated=${s.lastResult?.evaluated} closed=${s.lastResult?.closed} skipped=${s.lastResult?.skipped}`,
+      ),
+  });
+
   const app = buildApp({
     db,
-    market: new DexScreenerProvider(),
+    market: provider,
+    bot,
     config: {
       sessionTtlMs: Number(process.env.SESSION_TTL_MS ?? 12 * 60 * 60 * 1000),
       // Dev-only key. Production must supply MFA_ENCRYPTION_KEY.
@@ -75,19 +93,12 @@ async function main(): Promise<void> {
   await app.listen({ port, host });
 
   // Optional background paper-trading loop (dry-run only). Off by default.
+  // Can also be started/stopped at runtime by an ADMIN via /trading/bot/*.
   if (process.env.PAPER_ENGINE_ENABLED === "1") {
-    const intervalMs = Number(process.env.PAPER_ENGINE_INTERVAL_MS ?? 30_000);
-    const provider = new DexScreenerProvider();
-    setInterval(() => {
-      runTick(db, provider)
-        .then((r) =>
-          console.log(
-            `[paper] tick evaluated=${r.evaluated} closed=${r.closed} skipped=${r.skipped}`,
-          ),
-        )
-        .catch((err) => console.error("[paper] tick failed", err));
-    }, intervalMs).unref();
-    console.log(`[paper] background loop enabled every ${intervalMs}ms (dry-run)`);
+    bot.start();
+    console.log(
+      `[paper] background loop enabled every ${bot.status().intervalMs}ms (dry-run)`,
+    );
   }
 
   console.log(`[api] dev server on http://${host}:${port}`);

@@ -37,12 +37,22 @@ $env:DEV_SEED_USER="demo@ghostfx.local"; $env:DEV_SEED_PASSWORD="demo-password-1
 Sign in at http://localhost:3000 with `demo@ghostfx.local` /
 `demo-password-1`, open a paper position on the **Markets** page, then:
 
-- **Run bot tick** on the Dashboard/Positions to fetch a price and evaluate, or
-- **Evaluate** a position with an explicit price to drive the strategy
-  deterministically.
+- **Run one tick now** on the Dashboard to fetch a live price and evaluate, or
+- **Start engine** (admins) to run the bot on a schedule — the Dashboard shows
+  running/stopped, last + next tick, and the last result.
+
+Or start the engine automatically at boot:
+
+```bash
+# PowerShell — seed an ADMIN and auto-run the engine every 10s
+$env:DEV_SEED_USER="demo@ghostfx.local"; $env:DEV_SEED_ROLE="ADMIN"; `
+$env:PAPER_ENGINE_ENABLED="1"; $env:PAPER_ENGINE_INTERVAL_MS="10000"; npm run dev
+```
 
 The engine arms trailing take-profit at **+7%**, exits on a **2% pullback from
-the peak confirmed twice**, and (when configured) honours a hard stop-loss.
+the peak confirmed twice**, and (when configured) honours a hard stop-loss. It
+only ever evaluates **open paper positions**, rejects stale quotes, is
+single-flight (ticks never overlap), and keeps running through errors.
 Positions, realized/unrealized P&L, decisions, and exit evaluations are all
 persisted and visible in the UI. **Nothing here trades real funds.**
 
@@ -95,13 +105,23 @@ PostgreSQL installed). The PGlite dev server is exercised instead.
 | Trade-identity schema + accounting isolation | Implemented, tested (13 tests) |
 | Security primitives (scrypt/TOTP/AES-GCM/RBAC) | Implemented, tested (20 tests) |
 | Auth, sessions, MFA, admin, bootstrap | Implemented, tested (25 tests) |
-| Strategy engine (FLEXI) + risk + market data | Implemented, tested (27 tests) |
+| Strategy engine (FLEXI) + risk + market data | Implemented, tested (31 tests) |
 | Paper trading engine (open/evaluate/close, P&L, ledger) | Implemented, tested (40 tests) |
+| Schedulable bot runner (start/stop, status, single-flight) | Implemented, tested (11 tests) |
 | Web UI (auth, dashboard, positions, markets, portfolio, history, admin, MFA) | Implemented, verified running |
 | Live execution / real DEX orders | Not implemented (requires credentials + explicit approval) |
 | Python AI Brain | Blocked (no Python runtime) |
 
-**Total: 100 automated tests passing; all workspaces typecheck clean.**
+**Total: 115 automated tests passing; all workspaces typecheck clean.**
+
+### Bot engine
+
+- Runs on a schedule (default 30s) over all open **paper** positions; admins
+  start/stop it from the Dashboard, everyone can see its status.
+- Single-flight: a tick is only rescheduled after the previous one finishes, so
+  market calls never stack. Errors are recorded, never fatal to the loop.
+- The engine only calls the paper evaluation path — it cannot place a real
+  order, and live execution stays disabled by default.
 
 ### Paper engine behaviour
 
@@ -124,4 +144,6 @@ PostgreSQL installed). The PGlite dev server is exercised instead.
 | POST | `/trading/positions/:id/evaluate` | Evaluate one trade (price optional) |
 | POST | `/trading/positions/:id/close` | Explicit manual close |
 | POST | `/trading/tick` | Run one bot iteration over your open trades |
+| GET | `/trading/bot/status` | Engine running state, last/next tick, last result |
+| POST | `/trading/bot/start` · `/stop` | Start/stop the global engine (admin) |
 | GET/POST | `/trading/tokens` | List / register tokens |

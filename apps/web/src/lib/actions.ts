@@ -263,6 +263,22 @@ export async function runTickAction(): Promise<void> {
   revalidateTrading();
 }
 
+/** Starts the global dry-run bot engine. Requires operator (admin) rights. */
+export async function startBotAction(): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  await apiFetch("/trading/bot/start", { method: "POST", token });
+  revalidateTrading();
+}
+
+/** Stops the global dry-run bot engine. Requires operator (admin) rights. */
+export async function stopBotAction(): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  await apiFetch("/trading/bot/stop", { method: "POST", token });
+  revalidateTrading();
+}
+
 export async function addTokenAction(
   _prev: FormState,
   formData: FormData,

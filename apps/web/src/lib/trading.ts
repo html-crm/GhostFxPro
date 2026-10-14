@@ -41,6 +41,24 @@ export interface TokenRow {
   decimals: number;
 }
 
+export interface TickResult {
+  evaluated: number;
+  closed: number;
+  skipped: number;
+}
+
+export interface BotStatus {
+  running: boolean;
+  intervalMs: number;
+  scope: "all" | string;
+  tickCount: number;
+  lastTickAt: number | null;
+  nextTickAt: number | null;
+  lastResult: TickResult | null;
+  lastError: string | null;
+  inFlight: boolean;
+}
+
 export async function fetchPortfolio(): Promise<PortfolioSummary | null> {
   const token = await getToken();
   if (!token) return null;
@@ -67,4 +85,11 @@ export async function fetchTokens(): Promise<TokenRow[]> {
   if (!token) return [];
   const res = await apiFetch<{ tokens: TokenRow[] }>("/trading/tokens", { token });
   return res.ok && res.data ? res.data.tokens : [];
+}
+
+export async function fetchBotStatus(): Promise<BotStatus | null> {
+  const token = await getToken();
+  if (!token) return null;
+  const res = await apiFetch<{ bot: BotStatus }>("/trading/bot/status", { token });
+  return res.ok && res.data ? res.data.bot : null;
 }
