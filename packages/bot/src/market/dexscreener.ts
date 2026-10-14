@@ -3,11 +3,17 @@ import type { FetchLike, MarketDataProvider, TokenRef } from "./types.ts";
 
 const BASE = "https://api.dexscreener.com/latest/dex/tokens";
 
+interface DexTokenRef {
+  address?: string;
+}
+
 /** Minimal shape of the DEX Screener token response we depend on. */
 interface DexPair {
   chainId?: string;
   priceUsd?: string;
   priceNative?: string;
+  baseToken?: DexTokenRef | null;
+  quoteToken?: DexTokenRef | null;
   liquidity?: { usd?: number } | null;
 }
 
@@ -58,7 +64,11 @@ export class DexScreenerProvider implements MarketDataProvider {
       });
       if (!res.ok) return null;
       const body = (await res.json()) as DexResponse;
-      const pair = selectPair(body.pairs ?? [], this.chainIds[token.chain]);
+      const pair = selectPair(
+        body.pairs ?? [],
+        this.chainIds[token.chain],
+        token.address,
+      );
       if (!pair?.priceUsd) return null;
       const price = Number(pair.priceUsd);
       if (!Number.isFinite(price) || price <= 0) return null;
@@ -71,15 +81,37 @@ export class DexScreenerProvider implements MarketDataProvider {
   }
 }
 
-/** Picks the deepest-liquidity pair, preferring the expected chain. */
+/**
+ * Picks the deepest-liquidity pair whose **base** token is the token we asked
+ * about, preferring the expected chain.
+ *
+ * DEX Screener returns every pair touching an address, including pairs where
+ * the address is the *quote* token. For those, `priceUsd` is the price of the
+ * pair's base token — NOT ours. Reading it would report another asset's price
+ * (e.g. asking for USDC and getting PUMP). So we require the base-token address
+ * to match and otherwise return null rather than a confidently wrong number.
+ *
+ * When `tokenAddress` is omitted the previous chain-only behaviour is retained
+ * (used by tests / callers that already filtered).
+ */
 export function selectPair(
   pairs: DexPair[],
   expectedChainId?: string,
+  tokenAddress?: string,
 ): DexPair | null {
-  const candidates = expectedChainId
-    ? pairs.filter((p) => p.chainId === expectedChainId)
-    : pairs;
-  const pool = candidates.length > 0 ? candidates : pairs;
+  let pool = pairs;
+  if (expectedChainId) {
+    const onChain = pairs.filter((p) => p.chainId === expectedChainId);
+    if (onChain.length > 0) pool = onChain;
+  }
+  if (tokenAddress) {
+    const wanted = tokenAddress.toLowerCase();
+    const baseMatches = pool.filter(
+      (p) => p.baseToken?.address?.toLowerCase() === wanted,
+    );
+    if (baseMatches.length === 0) return null;
+    pool = baseMatches;
+  }
   let best: DexPair | null = null;
   let bestLiq = -1;
   for (const p of pool) {
