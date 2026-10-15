@@ -6,9 +6,11 @@ import Fastify, {
 import { isAuthorized, type Permission, type Role, type UserStatus } from "@ghostfx/security";
 import {
   DexScreenerProvider,
+  PublicRpcWalletProvider,
   searchPairs,
   type MarketDataProvider,
   type PairSummary,
+  type WalletBalanceProvider,
 } from "@ghostfx/bot";
 import { toAuthUser, type SqlExecutor } from "./db.ts";
 import { authenticateSession } from "./services/sessions.ts";
@@ -20,6 +22,7 @@ import { registerTradingRoutes } from "./routes/trading.ts";
 import { registerBotRoutes } from "./routes/bot.ts";
 import { registerMarketRoutes } from "./routes/market.ts";
 import { registerAlertRoutes } from "./routes/alerts.ts";
+import { registerWalletRoutes } from "./routes/wallets.ts";
 
 export interface AppConfig {
   sessionTtlMs: number;
@@ -33,6 +36,8 @@ export interface AppDeps {
   market?: MarketDataProvider;
   /** Read-only market discovery. Defaults to DEX Screener search. */
   marketSearch?: (query: string) => Promise<PairSummary[]>;
+  /** Read-only wallet balances. Defaults to public JSON-RPC. */
+  walletBalances?: WalletBalanceProvider;
   /** Injected clock for deterministic tests. */
   now?: () => number;
   /** Bot engine. Defaults to a global runner over the provided market data. */
@@ -51,6 +56,7 @@ export interface RouteContext {
   config: AppConfig;
   market: MarketDataProvider;
   marketSearch: (query: string) => Promise<PairSummary[]>;
+  walletBalances: WalletBalanceProvider;
   now: () => number;
   bot: BotRunner;
   authenticate: PreHandler;
@@ -63,6 +69,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const market = deps.market ?? new DexScreenerProvider();
   const marketSearch =
     deps.marketSearch ?? ((query: string) => searchPairs(query));
+  const walletBalances = deps.walletBalances ?? new PublicRpcWalletProvider();
   const now = deps.now ?? (() => Date.now());
   const bot =
     deps.bot ??
@@ -100,7 +107,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       }
     };
 
-  const ctx: RouteContext = { db, config, market, marketSearch, now, bot, authenticate, requirePermission };
+  const ctx: RouteContext = { db, config, market, marketSearch, walletBalances, now, bot, authenticate, requirePermission };
 
   app.get("/health", async () => ({ status: "ok" }));
 
@@ -110,6 +117,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerBotRoutes(app, ctx);
   registerMarketRoutes(app, ctx);
   registerAlertRoutes(app, ctx);
+  registerWalletRoutes(app, ctx);
 
   return app;
 }

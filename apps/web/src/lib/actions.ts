@@ -377,3 +377,69 @@ export async function evaluateAlertsAction(): Promise<void> {
   await apiFetch("/alerts/evaluate", { method: "POST", token });
   revalidateAlerts();
 }
+
+// ---------------------------------------------------------------------------
+// Wallets (watch-only: a public address and a label, never key material).
+// ---------------------------------------------------------------------------
+
+function revalidateWallets(): void {
+  revalidatePath("/wallets");
+}
+
+export async function addWalletAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await getToken();
+  if (!token) return { error: "not_authenticated" };
+
+  const chain = String(formData.get("chain") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const label = String(formData.get("label") ?? "").trim();
+
+  if (!chain || !address) return { error: "Chain and address are required." };
+
+  const res = await apiFetch<{ error?: string }>("/wallets", {
+    method: "POST",
+    token,
+    body: { chain, address, ...(label ? { label } : {}) },
+  });
+  if (!res.ok) {
+    const code = (res.data as { error?: string } | null)?.error ?? "add_failed";
+    if (code === "wallet_exists") return { error: "That address is already connected." };
+    if (code === "unsupported_chain") {
+      return { error: "That chain is not supported for wallet connections." };
+    }
+    if (code === "invalid_address") return { error: "That does not look like a valid address." };
+    if (code === "account_not_approved") return { error: "Your account is not approved." };
+    return { error: "Could not connect the wallet." };
+  }
+  revalidateWallets();
+  return { ok: true };
+}
+
+export async function renameWalletAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const walletId = String(formData.get("walletId"));
+  const label = String(formData.get("label") ?? "").trim();
+  await apiFetch(`/wallets/${walletId}`, {
+    method: "PATCH",
+    token,
+    body: { label },
+  });
+  revalidateWallets();
+}
+
+export async function deleteWalletAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const walletId = String(formData.get("walletId"));
+  await apiFetch(`/wallets/${walletId}`, { method: "DELETE", token });
+  revalidateWallets();
+}
+
+/** Re-fetches live balances (this route re-renders on the server). */
+export async function refreshWalletsAction(): Promise<void> {
+  revalidateWallets();
+}

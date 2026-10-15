@@ -1,7 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
-import { MockProvider, type MarketDataProvider } from "@ghostfx/bot";
+import {
+  MockProvider,
+  type MarketDataProvider,
+  type WalletBalanceProvider,
+} from "@ghostfx/bot";
 import { migrate } from "@ghostfx/db";
 import { buildApp, type AppConfig } from "../src/app.ts";
 import type { SqlExecutor } from "../src/db.ts";
@@ -18,6 +22,7 @@ export interface TestApp {
 
 export interface TestAppOptions {
   market?: MarketDataProvider;
+  walletBalances?: WalletBalanceProvider;
   now?: () => number;
 }
 
@@ -38,6 +43,7 @@ export async function makeTestApp(opts: TestAppOptions = {}): Promise<TestApp> {
     db,
     config,
     market: opts.market ?? new MockProvider({}),
+    ...(opts.walletBalances ? { walletBalances: opts.walletBalances } : {}),
     now: opts.now,
   });
   await app.ready();

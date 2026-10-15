@@ -50,3 +50,23 @@ export {
   type AlertObservation,
   type AlertOutcome,
 } from "./alerts/alerts.ts";
+
+export {
+  PublicRpcWalletProvider,
+  validateWalletAddress,
+  isSupportedWalletChain,
+  isEvmAddress,
+  isSolanaAddress,
+  formatUnits,
+  hexToBigInt,
+  SUPPORTED_WALLET_CHAINS,
+  NATIVE_ASSETS,
+  type WalletChain,
+  type WalletBalances,
+  type WalletBalanceProvider,
+  type NativeBalance,
+  type TokenBalance,
+  type TokenRefMeta,
+  type PublicRpcWalletOptions,
+  type RpcFetchLike,
+} from "./wallet/balances.ts";

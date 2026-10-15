@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node --import tsx src/server.ts",
     "dev": "node --import tsx src/dev-server.ts",
-    "test": "node --import tsx --test test/auth.test.ts test/admin.test.ts test/paper.test.ts test/bot.test.ts test/alerts.test.ts",
+    "test": "node --import tsx --test test/auth.test.ts test/admin.test.ts test/paper.test.ts test/bot.test.ts test/alerts.test.ts test/wallets.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
