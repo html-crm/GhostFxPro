@@ -47,12 +47,13 @@ async function main(): Promise<void> {
     if (seedRole !== "USER" && seedRole !== "ADMIN" && seedRole !== "SUPER_ADMIN") {
       throw new Error(`invalid DEV_SEED_ROLE: ${seedRole}`);
     }
+    const seedName = process.env.DEV_SEED_NAME ?? "Demo Trader";
     const existing = await findUserByEmail(db, seedEmail);
     if (!existing) {
       await db.query(
         `INSERT INTO users (email, display_name, password_hash, role, status, email_verified)
          VALUES ($1, $2, $3, $4::user_role, 'APPROVED', true)`,
-        [seedEmail, "Demo Trader", hashPassword(seedPassword), seedRole],
+        [seedEmail, seedName, hashPassword(seedPassword), seedRole],
       );
       console.log(
         `[api] DEV seed user ${seedEmail} (role ${seedRole}, password: ${seedPassword}) — APPROVED`,
