@@ -14,6 +14,7 @@ import type {
   BacktestOptions,
   BacktestTrade,
   ExitPolicy,
+  PolicyContext,
   PositionSnapshot,
 } from "./types.ts";
 
@@ -54,7 +55,11 @@ export function runBacktest(
     const drawdown = peak > 0 ? (peak - candle.close) / peak : 0;
     if (drawdown > maxDrawdownPct) maxDrawdownPct = drawdown;
 
-    const decision = opts.policy(state, candle);
+    const decision = opts.policy(state, candle, {
+      candles,
+      entryIndex,
+      index: i,
+    } as PolicyContext);
     if (decision.action === "CLOSE") {
       exitIndex = i;
       exitPrice = candle.close;

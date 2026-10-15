@@ -7,7 +7,8 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "test": "node --import tsx --test test/flexi.test.ts test/risk.test.ts test/dexscreener.test.ts test/token-profile.test.ts test/alerts.test.ts test/wallets.test.ts test/compare.test.ts test/klines.test.ts test/backtest.test.ts test/dataset.test.ts",
+    "test": "node --import tsx --test test/flexi.test.ts test/risk.test.ts test/dexscreener.test.ts test/token-profile.test.ts test/alerts.test.ts test/wallets.test.ts test/compare.test.ts test/klines.test.ts test/backtest.test.ts test/dataset.test.ts test/ml.test.ts",
+    "export-dataset": "node --import tsx scripts/export-dataset.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

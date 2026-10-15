@@ -82,19 +82,26 @@ test("fetchKlines returns [] when the source is not ok or throws", async () => {
   assert.deepEqual(await fetchKlines("  ", { fetchImpl: bad }), []);
 });
 
-test("fetchKlinesSeries pages forward using the last close time", async () => {
+test("fetchKlinesSeries pages backward and returns ascending order", async () => {
   const urls: string[] = [];
-  const pages: Record<string, unknown> = {
-    "": [[1000, "1", "2", "1", "2", "1", 1999], [2000, "1", "2", "1", "2", "1", 2999]],
-  };
+  const candle = (openTime: number, close: number) => [
+    openTime,
+    "1",
+    "2",
+    "1",
+    String(close),
+    "1",
+    openTime + 1000,
+  ];
   const pager: FetchLike = async (input) => {
     urls.push(input);
-    const m = /startTime=(\d+)/.exec(input);
-    const key = m ? m[1]! : "";
-    // First request (no startTime) returns 2; the next (startTime=3000) returns 1 then dries up.
-    const body = key === "3000"
-      ? [[3000, "1", "2", "1", "3", "1", 3999]]
-      : pages[""]!;
+    const m = /endTime=(\d+)/.exec(input);
+    const end = m ? Number(m[1]) : Infinity;
+    // Page 1 (no endTime): the two newest candles, ascending like Binance.
+    // Page 2 (endTime=2999): the two before that. Then it dries up.
+    let body: unknown = [];
+    if (end === Infinity) body = [candle(3000, 3), candle(4000, 4)];
+    else if (end === 2999) body = [candle(1000, 1), candle(2000, 2)];
     return { ok: true, status: 200, json: async () => body };
   };
 
@@ -103,10 +110,12 @@ test("fetchKlinesSeries pages forward using the last close time", async () => {
     pageSize: 2,
     fetchImpl: pager,
   });
-  assert.equal(series.length, 3);
-  assert.equal(series[2]!.close, 3);
-  // Second call must start one ms after the first page's last close time.
-  assert.ok(urls[1]!.includes("startTime=3000"));
+  // Pages collected newest-first then reversed: [1000,2000,3000,4000] -> last 3.
+  assert.deepEqual(
+    series.map((c) => c.openTime),
+    [2000, 3000, 4000],
+  );
+  assert.ok(urls[1]!.includes("endTime=2999")); // second page ends before the oldest of page 1
 });
 
 test("fetchKlinesSeries returns [] for a non-positive total", async () => {

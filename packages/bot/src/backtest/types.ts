@@ -31,6 +31,16 @@ export interface ExitDecision {
 }
 
 /**
+ * Context handed to a policy so a learned model can rebuild the same features
+ * used during training. Replay data is read-only and index-addressed.
+ */
+export interface PolicyContext {
+  candles: Candle[];
+  entryIndex: number;
+  index: number;
+}
+
+/**
  * Pure decision function. Given the current position state and the latest
  * candle, decide whether to close. Implementations must be deterministic for
  * the same inputs.
@@ -38,6 +48,7 @@ export interface ExitDecision {
 export type ExitPolicy = (
   state: PositionSnapshot,
   candle: Candle,
+  ctx: PolicyContext,
 ) => ExitDecision;
 
 export interface BacktestOptions {
@@ -67,4 +78,32 @@ export interface BacktestTrade {
   netPnlPct: number;
   /** Why the position closed (e.g. "trailing_exit" or "horizon_end"). */
   exitReason: string;
+}
+
+export type DecisionLabel = "CLOSE" | "HOLD";
+
+/** Feature vector for one decision point. Names are stable; order is set by consumers. */
+export interface DecisionFeatures {
+  /** Return since entry, as a fraction. */
+  returnPct: number;
+  /** Peak return since entry, as a fraction. */
+  peakReturnPct: number;
+  /** Drop from the running peak, as a positive fraction. */
+  drawdownFromPeak: number;
+  /** Bars held so far. */
+  barsHeld: number;
+  /** Short-term momentum (return over `momentumLookback` bars). */
+  momentum: number;
+  /** Std-dev of bar returns over the short window (0 when under two bars). */
+  volatility: number;
+  /** Bars since the running peak was set (0 when the peak is the current bar). */
+  peakAge: number;
+  /** Longer-term momentum (return over `momentumLongLookback` bars). */
+  momentumLong: number;
+  /** Short volatility divided by long volatility (regime; 1 when undefined). */
+  volatilityRatio: number;
+  /** Distance of close from a trailing simple moving average, as a fraction. */
+  smaDeviation: number;
+  /** Simple RSI over the last `rsiWindow` changes (50 when flat). */
+  rsi: number;
 }

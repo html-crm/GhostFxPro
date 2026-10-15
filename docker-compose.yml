@@ -22,6 +22,18 @@ services:
       - api
     restart: unless-stopped
 
+  # Offline ML trainer for exit decisions. Runs the labeled dataset through
+  # logistic regression and hands the resulting model back to the API/bot.
+  # Not on the live trading path; never receives exchange credentials.
+  ml:
+    build:
+      context: ./ml
+    environment:
+      - ML_PORT=8080
+    expose:
+      - "8080"
+    restart: unless-stopped
+
 volumes:
   gfp-data:
 

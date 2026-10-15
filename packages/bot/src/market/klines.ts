@@ -101,10 +101,11 @@ export async function fetchKlines(
 }
 
 /**
- * Fetches more than one page by walking forward from each page's last close
- * time. Stops when `total` is reached, when the source stops returning full
- * pages, or when a page comes back empty. Capped at `total` to avoid a runaway
- * loop.
+ * Fetches more than one page of history. Binance returns the *most recent*
+ * candles when given no time bounds, so paging walks **backward** from the
+ * newest candle (setting `endTime` to just before the oldest candle seen). The
+ * collected pages are reversed to ascending order and trimmed to the most
+ * recent `total` candles. Stops early on a short or empty page.
  */
 export async function fetchKlinesSeries(
   symbol: string,
@@ -114,29 +115,31 @@ export async function fetchKlinesSeries(
   const total = Math.max(0, Math.floor(opts.total));
   if (total === 0) return [];
 
-  const out: Candle[] = [];
-  let startTime = opts.startTime;
+  const pages: Candle[][] = [];
+  let endTime = opts.endTime;
+  let collected = 0;
   let guard = 0;
   const maxPages = Math.ceil(total / pageSize) + 2;
 
-  while (out.length < total && guard < maxPages) {
+  while (collected < total && guard < maxPages) {
     guard += 1;
     const page = await fetchKlines(symbol, {
       interval: opts.interval,
-      startTime,
-      endTime: opts.endTime,
+      endTime,
       limit: pageSize,
       baseUrl: opts.baseUrl,
       fetchImpl: opts.fetchImpl,
       timeoutMs: opts.timeoutMs,
     });
     if (page.length === 0) break;
-    out.push(...page);
+    pages.push(page);
+    collected += page.length;
     if (page.length < pageSize) break;
-    startTime = page[page.length - 1]!.closeTime + 1;
+    endTime = page[0]!.openTime - 1;
   }
 
-  return out.slice(0, total);
+  const flat = pages.reverse().flat();
+  return flat.length > total ? flat.slice(flat.length - total) : flat;
 }
 
 /**

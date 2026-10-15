@@ -72,10 +72,15 @@ export {
   flexiPolicy,
   summarize,
   buildDecisionDataset,
+  datasetToJsonl,
+  FEATURE_NAMES,
+  computeDecisionFeatures,
+  readFeature,
   type PositionSnapshot,
   type ExitAction,
   type ExitDecision,
   type ExitPolicy,
+  type PolicyContext,
   type BacktestOptions,
   type BacktestTrade,
   type BacktestSeriesOptions,
@@ -85,7 +90,16 @@ export {
   type DecisionFeatures,
   type DatasetRow,
   type DatasetOptions,
+  type FeatureName,
+  type FeatureOptions,
 } from "./backtest/index.ts";
+
+export {
+  parseModel,
+  predictCloseProbability,
+  learnedPolicy,
+  type LearnedModel,
+} from "./ml/model.ts";
 
 export {
   evaluateAlert,
