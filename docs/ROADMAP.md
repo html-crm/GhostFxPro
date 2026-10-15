@@ -16,7 +16,10 @@ Status legend: **Done** | **In progress** | **Planned** | **Blocked** | **Not st
 | 10 | Authorized integration testing | **In progress** (status/eligibility page shipped; live execution still blocked — no creds/env) |
 | 11 | Security & production-readiness review | **Planned** |
 
-Total automated tests: **192 passing** (60 bot + 13 db + 20 security + 99 api).
+Total automated tests: **212 passing** (67 bot + 13 db + 20 security + 104 api + 8 web).
+
+**Release: v1.0.1.** Releases are tagged in git (`vX.Y.Z`); every workspace
+`package.json` shares the version. The API exposes it at `GET /health`.
 
 ## Phase 3 deliverables
 

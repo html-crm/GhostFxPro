@@ -1,6 +1,6 @@
 {
   "name": "@ghostfx/api",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "GhostFxPro HTTP API: auth, sessions, MFA, admin, RBAC.",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node --import tsx src/server.ts",
     "dev": "node --import tsx src/dev-server.ts",
-    "test": "node --import tsx --test test/auth.test.ts test/admin.test.ts test/paper.test.ts test/bot.test.ts test/alerts.test.ts test/wallets.test.ts test/strategies.test.ts test/exchanges.test.ts",
+    "test": "node --import tsx --test test/auth.test.ts test/admin.test.ts test/paper.test.ts test/bot.test.ts test/alerts.test.ts test/wallets.test.ts test/strategies.test.ts test/exchanges.test.ts test/market.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

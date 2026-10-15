@@ -3,9 +3,10 @@
 Production-grade multi-chain crypto trading platform. Built **correctness-first**,
 then security, observability, and finally features and visual polish.
 
-> **Status: Phases 1-8 (paper trading).** The trading engine runs in **dry-run
-> (paper)** mode only. Live execution is disabled by default and nothing in this
-> repo submits real orders. See `docs/ROADMAP.md`.
+> **Status: v1.0.1 — Phases 1-8 (paper trading).** The trading engine runs in
+> **dry-run (paper)** mode only. Live execution is disabled by default and nothing
+> in this repo submits real orders. See `docs/ROADMAP.md` and the
+> [Versioning](#versioning) section.
 
 ## Quick start (local)
 
@@ -113,11 +114,20 @@ PostgreSQL installed). The PGlite dev server is exercised instead.
 | Watch-only multi-chain wallets (live RPC balances) | Implemented, tested |
 | Strategy versioning (draft / compare / activate / rollback) | Implemented, tested |
 | Exchange integration status (read-only, no order surface) | Implemented, tested |
+| Token lookup by contract (auto-fill in the terminal) | Implemented, tested |
+| Client-side wallet generation (keys never leave the browser) | Implemented, tested |
 | Web UI (auth, dashboard, positions, markets, portfolio, history, admin, MFA, alerts, wallets, strategies, exchange) | Implemented, verified running |
 | Live execution / real DEX orders | Not implemented (requires credentials + explicit approval) |
 | Python AI Brain | Blocked (no Python runtime) |
 
-**Total: 192 automated tests passing; all workspaces typecheck clean.**
+**Total: 212 automated tests passing; all workspaces typecheck clean.**
+
+## Versioning
+
+Releases follow semantic versioning and are tagged in git as `vMAJOR.MINOR.PATCH`.
+The current release is **v1.0.1**. The API reports its version at `GET /health`
+and the web shell shows it under the brand mark. Bump every workspace
+`package.json` together and tag the release commit (e.g. `git tag v1.0.2`).
 
 ### Bot engine
 

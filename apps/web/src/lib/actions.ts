@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "./api";
 import { TOKEN_COOKIE, getToken } from "./session";
+import type { TokenProfile } from "./market";
 
 export interface FormState {
   error?: string;
@@ -170,6 +171,37 @@ export async function changeRoleAction(formData: FormData): Promise<void> {
     body: { role },
   });
   revalidatePath("/admin/users");
+}
+
+// ---------------------------------------------------------------------------
+// Market token lookup (read-only: paste a contract, auto-fill its identity).
+// ---------------------------------------------------------------------------
+
+export async function lookupTokenAction(
+  address: string,
+): Promise<{ ok: boolean; profile?: TokenProfile; error?: string }> {
+  const token = await getToken();
+  if (!token) return { ok: false, error: "not_authenticated" };
+  const trimmed = (address ?? "").trim();
+  if (!trimmed) return { ok: false, error: "Enter a contract address." };
+
+  const res = await apiFetch<{ profile: TokenProfile }>(
+    `/market/token/${encodeURIComponent(trimmed)}`,
+    { token },
+  );
+  if (res.ok && res.data) return { ok: true, profile: res.data.profile };
+
+  const code = (res.data as { error?: string } | null)?.error;
+  if (code === "invalid_address") {
+    return { ok: false, error: "That is not a valid contract address." };
+  }
+  if (code === "token_not_found") {
+    return { ok: false, error: "No market found for that contract on DEX Screener." };
+  }
+  if (code === "account_not_approved") {
+    return { ok: false, error: "Your account is not approved." };
+  }
+  return { ok: false, error: "Lookup failed. Try again." };
 }
 
 // ---------------------------------------------------------------------------

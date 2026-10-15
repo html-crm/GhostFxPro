@@ -5,6 +5,7 @@ import {
   MockProvider,
   type MarketDataProvider,
   type WalletBalanceProvider,
+  type TokenProfile,
 } from "@ghostfx/bot";
 import { migrate } from "@ghostfx/db";
 import { buildApp, type AppConfig } from "../src/app.ts";
@@ -23,6 +24,7 @@ export interface TestApp {
 export interface TestAppOptions {
   market?: MarketDataProvider;
   walletBalances?: WalletBalanceProvider;
+  marketTokenProfile?: (address: string) => Promise<TokenProfile | null>;
   now?: () => number;
 }
 
@@ -44,6 +46,7 @@ export async function makeTestApp(opts: TestAppOptions = {}): Promise<TestApp> {
     config,
     market: opts.market ?? new MockProvider({}),
     ...(opts.walletBalances ? { walletBalances: opts.walletBalances } : {}),
+    ...(opts.marketTokenProfile ? { marketTokenProfile: opts.marketTokenProfile } : {}),
     now: opts.now,
   });
   await app.ready();

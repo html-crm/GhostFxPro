@@ -1,13 +1,13 @@
 {
   "name": "@ghostfx/bot",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "Trading decision engine: strategy evaluation (FLEXI), risk gates, market data providers.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "test": "node --import tsx --test test/flexi.test.ts test/risk.test.ts test/dexscreener.test.ts test/alerts.test.ts test/wallets.test.ts test/compare.test.ts",
+    "test": "node --import tsx --test test/flexi.test.ts test/risk.test.ts test/dexscreener.test.ts test/token-profile.test.ts test/alerts.test.ts test/wallets.test.ts test/compare.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

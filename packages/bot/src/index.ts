@@ -48,6 +48,13 @@ export {
   type DexScreenerOptions,
   type PairSummary,
 } from "./market/dexscreener.ts";
+export {
+  getTokenProfile,
+  detectTokenChain,
+  type TokenProfile,
+  type TokenProfileOptions,
+  type TokenChain,
+} from "./market/token-profile.ts";
 export { MockProvider } from "./market/mock.ts";
 
 export {

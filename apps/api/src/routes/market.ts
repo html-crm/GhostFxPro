@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { detectTokenChain } from "@ghostfx/bot";
 import type { RouteContext } from "../app.ts";
 import { fail } from "../http.ts";
 
@@ -11,7 +12,7 @@ export function registerMarketRoutes(
   app: FastifyInstance,
   ctx: RouteContext,
 ): void {
-  const { authenticate, marketSearch } = ctx;
+  const { authenticate, marketSearch, marketTokenProfile } = ctx;
 
   const guard = async (req: FastifyRequest, reply: FastifyReply) => {
     await authenticate(req, reply);
@@ -34,6 +35,28 @@ export function registerMarketRoutes(
       fetchedAt: ctx.now(),
       count: results.length,
       pairs: results,
+    });
+  });
+
+  /**
+   * Token lookup by contract address. Paste a contract, get its identity,
+   * on-chain decimals, and best observable market so a form can auto-fill.
+   * Read-only; it never places an order.
+   */
+  app.get("/market/token/:address", { preHandler: guard }, async (req, reply) => {
+    const { address } = req.params as { address: string };
+    const trimmed = (address ?? "").trim();
+    if (!detectTokenChain(trimmed)) {
+      return fail(reply, 400, "invalid_address");
+    }
+    const profile = await marketTokenProfile(trimmed);
+    if (!profile) {
+      return fail(reply, 404, "token_not_found");
+    }
+    return reply.send({
+      source: "dexscreener",
+      fetchedAt: ctx.now(),
+      profile,
     });
   });
 }

@@ -38,3 +38,18 @@ export async function searchPairs(
   );
   return res.ok && res.data ? res.data : null;
 }
+
+/** Token identity + market facts resolved from a contract address. */
+export interface TokenProfile {
+  chain: "SOLANA" | "BNB";
+  address: string;
+  symbol: string | null;
+  name: string | null;
+  decimals: number | null;
+  priceUsd: number | null;
+  liquidityUsd: number | null;
+  pairCount: number;
+  dexId: string | null;
+  pairAddress: string | null;
+  fetchedAt: number;
+}

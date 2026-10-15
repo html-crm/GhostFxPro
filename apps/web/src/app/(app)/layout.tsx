@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, isAdmin } from "@/lib/session";
 import { logoutAction } from "@/lib/actions";
 import { SideNav } from "@/components/SideNav";
+import pkg from "../../../package.json";
 
 export default async function AppLayout({
   children,
@@ -23,6 +24,9 @@ export default async function AppLayout({
       <aside className="sidebar">
         <div className="brand">
           Ghost<span>Fx</span>Pro
+          <span className="muted" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>
+            v{pkg.version}
+          </span>
         </div>
         <SideNav showAdmin={isAdmin(user)} />
       </aside>

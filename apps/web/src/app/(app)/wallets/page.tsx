@@ -9,6 +9,7 @@ import {
   renameWalletAction,
 } from "@/lib/actions";
 import { AddWalletForm } from "@/components/AddWalletForm";
+import { GenerateWalletForm } from "@/components/GenerateWalletForm";
 
 function shortAddress(address: string): string {
   if (address.length <= 14) return address;
@@ -207,6 +208,11 @@ export default async function WalletsPage() {
       <div className="card">
         <div className="card-title">Connect a wallet</div>
         <AddWalletForm />
+      </div>
+
+      <div className="card">
+        <div className="card-title">Generate a new wallet</div>
+        <GenerateWalletForm />
       </div>
 
       {wallets.length === 0 ? (
