@@ -36,6 +36,17 @@ export type {
 export {
   DexScreenerProvider,
   selectPair,
+  searchPairs,
   type DexScreenerOptions,
+  type PairSummary,
 } from "./market/dexscreener.ts";
 export { MockProvider } from "./market/mock.ts";
+
+export {
+  evaluateAlert,
+  isPriceAlert,
+  type AlertKind,
+  type AlertRule,
+  type AlertObservation,
+  type AlertOutcome,
+} from "./alerts/alerts.ts";

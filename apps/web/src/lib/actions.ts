@@ -303,3 +303,77 @@ export async function addTokenAction(
   revalidatePath("/markets");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Alerts (passive observations only — they never place an order).
+// ---------------------------------------------------------------------------
+
+function revalidateAlerts(): void {
+  revalidatePath("/alerts");
+}
+
+export async function createAlertAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await getToken();
+  if (!token) return { error: "not_authenticated" };
+
+  const kind = String(formData.get("kind") ?? "").trim();
+  const chain = String(formData.get("chain") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const symbol = String(formData.get("symbol") ?? "").trim();
+  const threshold = String(formData.get("threshold") ?? "").trim();
+  const pct = String(formData.get("pct") ?? "").trim();
+
+  if (!kind || !chain || !address || !symbol) {
+    return { error: "Kind, chain, address and symbol are required." };
+  }
+
+  const body: Record<string, unknown> = { kind, chain, address, symbol };
+  if (threshold) body.threshold = threshold;
+  if (pct) body.pct = pct;
+
+  const res = await apiFetch<{ error?: string }>("/alerts", {
+    method: "POST",
+    token,
+    body,
+  });
+  if (!res.ok) {
+    const code = (res.data as { error?: string } | null)?.error ?? "create_failed";
+    if (code === "invalid_pct") return { error: "Percent must be between 0 and 100." };
+    if (code.startsWith("invalid_")) return { error: "Check the alert fields and try again." };
+    return { error: "Could not create the alert." };
+  }
+  revalidateAlerts();
+  return { ok: true };
+}
+
+export async function toggleAlertAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const alertId = String(formData.get("alertId"));
+  const isActive = String(formData.get("isActive")) === "true";
+  await apiFetch(`/alerts/${alertId}`, {
+    method: "PATCH",
+    token,
+    body: { isActive: !isActive },
+  });
+  revalidateAlerts();
+}
+
+export async function deleteAlertAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const alertId = String(formData.get("alertId"));
+  await apiFetch(`/alerts/${alertId}`, { method: "DELETE", token });
+  revalidateAlerts();
+}
+
+/** Runs a one-off evaluation now and reports how many alerts fired. */
+export async function evaluateAlertsAction(): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  await apiFetch("/alerts/evaluate", { method: "POST", token });
+  revalidateAlerts();
+}

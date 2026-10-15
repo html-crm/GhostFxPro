@@ -102,7 +102,7 @@ describe("BotRunner lifecycle", () => {
     const status = runner.status();
     assert.equal(status.tickCount, 1);
     assert.equal(status.lastTickAt, NOW);
-    assert.deepEqual(status.lastResult, { evaluated: 0, closed: 0, skipped: 0 });
+    assert.deepEqual(status.lastResult, { evaluated: 0, closed: 0, skipped: 0, alertsTriggered: 0 });
     assert.equal(status.lastError, null);
     assert.equal(sched.pending(), 1, "rescheduled after the tick");
     runner.stop();

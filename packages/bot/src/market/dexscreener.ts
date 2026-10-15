@@ -2,19 +2,48 @@ import type { Quote } from "../strategy/types.ts";
 import type { FetchLike, MarketDataProvider, TokenRef } from "./types.ts";
 
 const BASE = "https://api.dexscreener.com/latest/dex/tokens";
+const SEARCH_BASE = "https://api.dexscreener.com/latest/dex/search";
 
 interface DexTokenRef {
   address?: string;
+  name?: string;
+  symbol?: string;
 }
 
 /** Minimal shape of the DEX Screener token response we depend on. */
 interface DexPair {
   chainId?: string;
+  dexId?: string;
+  url?: string;
+  pairAddress?: string;
   priceUsd?: string;
   priceNative?: string;
   baseToken?: DexTokenRef | null;
   quoteToken?: DexTokenRef | null;
   liquidity?: { usd?: number } | null;
+  volume?: { h24?: number } | null;
+  priceChange?: { h24?: number } | null;
+  pairCreatedAt?: number;
+}
+
+/** Flattened, UI-friendly view of a discovered pair. Read-only. */
+export interface PairSummary {
+  chainId: string;
+  dexId: string;
+  pairAddress: string;
+  url: string | null;
+  baseSymbol: string;
+  baseAddress: string;
+  baseName: string | null;
+  quoteSymbol: string;
+  quoteAddress: string;
+  priceUsd: number | null;
+  liquidityUsd: number | null;
+  volume24hUsd: number | null;
+  priceChange24h: number | null;
+  pairCreatedAt: number | null;
+  /** When this data was observed (ms). Never presented as realtime. */
+  fetchedAt: number;
 }
 
 interface DexResponse {
@@ -78,6 +107,64 @@ export class DexScreenerProvider implements MarketDataProvider {
     } finally {
       clearTimeout(timer);
     }
+  }
+}
+
+function toPairSummary(p: DexPair, ts: number): PairSummary {
+  const priceUsd = p.priceUsd !== undefined ? Number(p.priceUsd) : NaN;
+  const priceChange = p.priceChange?.h24;
+  return {
+    chainId: p.chainId ?? "unknown",
+    dexId: p.dexId ?? "unknown",
+    pairAddress: p.pairAddress ?? "",
+    url: p.url ?? null,
+    baseSymbol: p.baseToken?.symbol ?? "?",
+    baseAddress: p.baseToken?.address ?? "",
+    baseName: p.baseToken?.name ?? null,
+    quoteSymbol: p.quoteToken?.symbol ?? "?",
+    quoteAddress: p.quoteToken?.address ?? "",
+    priceUsd: Number.isFinite(priceUsd) && priceUsd > 0 ? priceUsd : null,
+    liquidityUsd: p.liquidity?.usd ?? null,
+    volume24hUsd: p.volume?.h24 ?? null,
+    priceChange24h: typeof priceChange === "number" ? priceChange : null,
+    pairCreatedAt: p.pairCreatedAt ?? null,
+    fetchedAt: ts,
+  };
+}
+
+/**
+ * Read-only token/pair discovery via the DEX Screener search endpoint
+ * (`/latest/dex/search?q=`). Returns at most 30 pairs, richest liquidity first.
+ * It never executes anything and never invents values: missing fields stay null.
+ */
+export async function searchPairs(
+  query: string,
+  opts: DexScreenerOptions = {},
+): Promise<PairSummary[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const fetchImpl =
+    opts.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
+  const timeoutMs = opts.timeoutMs ?? 8000;
+  const now = opts.now ?? (() => Date.now());
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(`${SEARCH_BASE}?q=${encodeURIComponent(q)}`, {
+      signal: controller.signal,
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as DexResponse;
+    const pairs = body.pairs ?? [];
+    const ts = now();
+    return pairs
+      .map((p) => toPairSummary(p, ts))
+      .sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))
+      .slice(0, 30);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 

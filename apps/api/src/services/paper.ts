@@ -18,6 +18,7 @@ import {
   quoteToBaseUnits,
   toScaled,
 } from "./decimal.ts";
+import { evaluateAlerts, firePositionAlerts } from "./alerts.ts";
 
 export type ChainKind = "SOLANA" | "BNB" | "ROBINHOOD";
 
@@ -303,6 +304,7 @@ export async function openPaperPosition(
     targetId: tradeId,
     metadata: { token: input.token.symbol, notional: input.notionalQuote },
   });
+  await firePositionAlerts(db, { userId, tradeId, kind: "POSITION_OPENED" });
 
   return {
     tradeId,
@@ -505,6 +507,11 @@ async function executeSell(db: SqlExecutor, input: SellInput): Promise<void> {
     targetId: input.tradeId,
     metadata: { reason: input.reason, proceeds },
   });
+  await firePositionAlerts(db, {
+    userId: input.userId,
+    tradeId: input.tradeId,
+    kind: "POSITION_CLOSED",
+  });
 }
 
 /** Explicit, user-initiated close at a given price. */
@@ -701,12 +708,14 @@ export interface TickResult {
   evaluated: number;
   closed: number;
   skipped: number;
+  alertsTriggered: number;
 }
 
 /**
  * One bot iteration: fetch a quote for every open paper trade (optionally
  * scoped to one user) and evaluate it. A missing/unavailable quote is skipped,
- * never guessed.
+ * never guessed. Afterwards every active *price* alert is evaluated and any
+ * that fire are recorded. Firing an alert never places an order.
  */
 export async function runTick(
   db: SqlExecutor,
@@ -727,7 +736,7 @@ export async function runTick(
     params,
   );
 
-  const result: TickResult = { evaluated: 0, closed: 0, skipped: 0 };
+  const result: TickResult = { evaluated: 0, closed: 0, skipped: 0, alertsTriggered: 0 };
   for (const t of trades.rows) {
     const quote = await provider.getQuote({
       chain: t.chain,
@@ -741,6 +750,12 @@ export async function runTick(
     result.evaluated += 1;
     if (outcome.closed) result.closed += 1;
   }
+  result.alertsTriggered = await evaluateAlerts(
+    db,
+    provider,
+    userId,
+    opts.now ?? Date.now(),
+  );
   return result;
 }
 

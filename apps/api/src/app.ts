@@ -4,7 +4,12 @@ import Fastify, {
   type FastifyRequest,
 } from "fastify";
 import { isAuthorized, type Permission, type Role, type UserStatus } from "@ghostfx/security";
-import { DexScreenerProvider, type MarketDataProvider } from "@ghostfx/bot";
+import {
+  DexScreenerProvider,
+  searchPairs,
+  type MarketDataProvider,
+  type PairSummary,
+} from "@ghostfx/bot";
 import { toAuthUser, type SqlExecutor } from "./db.ts";
 import { authenticateSession } from "./services/sessions.ts";
 import { bearer, fail } from "./http.ts";
@@ -13,6 +18,8 @@ import { registerAuthRoutes } from "./routes/auth.ts";
 import { registerAdminRoutes } from "./routes/admin.ts";
 import { registerTradingRoutes } from "./routes/trading.ts";
 import { registerBotRoutes } from "./routes/bot.ts";
+import { registerMarketRoutes } from "./routes/market.ts";
+import { registerAlertRoutes } from "./routes/alerts.ts";
 
 export interface AppConfig {
   sessionTtlMs: number;
@@ -24,6 +31,8 @@ export interface AppDeps {
   config: AppConfig;
   /** Market-data source for paper trading. Defaults to DEX Screener. */
   market?: MarketDataProvider;
+  /** Read-only market discovery. Defaults to DEX Screener search. */
+  marketSearch?: (query: string) => Promise<PairSummary[]>;
   /** Injected clock for deterministic tests. */
   now?: () => number;
   /** Bot engine. Defaults to a global runner over the provided market data. */
@@ -41,6 +50,7 @@ export interface RouteContext {
   db: SqlExecutor;
   config: AppConfig;
   market: MarketDataProvider;
+  marketSearch: (query: string) => Promise<PairSummary[]>;
   now: () => number;
   bot: BotRunner;
   authenticate: PreHandler;
@@ -51,6 +61,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: false });
   const { db, config } = deps;
   const market = deps.market ?? new DexScreenerProvider();
+  const marketSearch =
+    deps.marketSearch ?? ((query: string) => searchPairs(query));
   const now = deps.now ?? (() => Date.now());
   const bot =
     deps.bot ??
@@ -88,7 +100,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       }
     };
 
-  const ctx: RouteContext = { db, config, market, now, bot, authenticate, requirePermission };
+  const ctx: RouteContext = { db, config, market, marketSearch, now, bot, authenticate, requirePermission };
 
   app.get("/health", async () => ({ status: "ok" }));
 
@@ -96,6 +108,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerAdminRoutes(app, ctx);
   registerTradingRoutes(app, ctx);
   registerBotRoutes(app, ctx);
+  registerMarketRoutes(app, ctx);
+  registerAlertRoutes(app, ctx);
 
   return app;
 }

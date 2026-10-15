@@ -45,6 +45,7 @@ export interface TickResult {
   evaluated: number;
   closed: number;
   skipped: number;
+  alertsTriggered: number;
 }
 
 export interface BotStatus {

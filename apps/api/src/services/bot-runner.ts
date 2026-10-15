@@ -148,7 +148,7 @@ export class BotRunner {
 
   private async execute(): Promise<TickResult> {
     if (this._inFlight) {
-      return this._lastResult ?? { evaluated: 0, closed: 0, skipped: 0 };
+      return this._lastResult ?? { evaluated: 0, closed: 0, skipped: 0, alertsTriggered: 0 };
     }
     this._inFlight = true;
     try {
