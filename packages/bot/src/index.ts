@@ -55,7 +55,37 @@ export {
   type TokenProfileOptions,
   type TokenChain,
 } from "./market/token-profile.ts";
+export {
+  fetchKlines,
+  fetchKlinesSeries,
+  parseKlines,
+  type Candle,
+  type KlineInterval,
+  type KlinesOptions,
+  type KlinesSeriesOptions,
+} from "./market/klines.ts";
 export { MockProvider } from "./market/mock.ts";
+
+export {
+  runBacktest,
+  runBacktestSeries,
+  flexiPolicy,
+  summarize,
+  buildDecisionDataset,
+  type PositionSnapshot,
+  type ExitAction,
+  type ExitDecision,
+  type ExitPolicy,
+  type BacktestOptions,
+  type BacktestTrade,
+  type BacktestSeriesOptions,
+  type FlexiPolicyOptions,
+  type BacktestMetrics,
+  type DecisionLabel,
+  type DecisionFeatures,
+  type DatasetRow,
+  type DatasetOptions,
+} from "./backtest/index.ts";
 
 export {
   evaluateAlert,
