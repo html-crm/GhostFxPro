@@ -153,11 +153,11 @@ export interface FlexiStrategyRef {
   config: FlexiConfig;
 }
 
-/** Finds or creates the owner's FLEXI strategy + version 1 (idempotent). */
-export async function getOrCreateFlexiStrategyVersion(
+/** Finds or creates the owner's FLEXI strategy row (idempotent). */
+export async function ensureFlexiStrategyId(
   db: SqlExecutor,
   userId: string,
-): Promise<FlexiStrategyRef> {
+): Promise<string> {
   await db.query(
     `INSERT INTO strategies (owner_id, name) VALUES ($1, 'FLEXI')
      ON CONFLICT (owner_id, name) DO NOTHING`,
@@ -167,17 +167,30 @@ export async function getOrCreateFlexiStrategyVersion(
     `SELECT strategy_id FROM strategies WHERE owner_id = $1 AND name = 'FLEXI'`,
     [userId],
   );
-  const strategyId = strat.rows[0]!.strategy_id;
+  return strat.rows[0]!.strategy_id;
+}
 
-  const existing = await db.query<{ strategy_version_id: string; config: unknown }>(
+/**
+ * Finds the owner's ACTIVE FLEXI version, seeding version 1 from the documented
+ * defaults when there is none. New trades pin the returned version, so
+ * activating a different version changes future trades while leaving the config
+ * of already-open trades untouched (they keep the version they opened under).
+ */
+export async function getOrCreateFlexiStrategyVersion(
+  db: SqlExecutor,
+  userId: string,
+): Promise<FlexiStrategyRef> {
+  const strategyId = await ensureFlexiStrategyId(db, userId);
+
+  const active = await db.query<{ strategy_version_id: string; config: unknown }>(
     `SELECT strategy_version_id, config FROM strategy_versions
-     WHERE strategy_id = $1 AND version = 1`,
+     WHERE strategy_id = $1 AND is_active = true LIMIT 1`,
     [strategyId],
   );
-  if (existing.rows[0]) {
+  if (active.rows[0]) {
     return {
-      strategyVersionId: existing.rows[0].strategy_version_id,
-      config: parseConfig(existing.rows[0].config),
+      strategyVersionId: active.rows[0].strategy_version_id,
+      config: parseConfig(active.rows[0].config),
     };
   }
 
@@ -185,21 +198,26 @@ export async function getOrCreateFlexiStrategyVersion(
   const json = JSON.stringify(config);
   const hash = createHash("sha256").update(json).digest("hex");
   const inserted = await db.query<{ strategy_version_id: string }>(
-    `INSERT INTO strategy_versions (strategy_id, version, config, config_hash, is_active)
-     VALUES ($1, 1, $2::jsonb, $3, true)
+    `INSERT INTO strategy_versions
+       (strategy_id, version, config, config_hash, is_active, activated_at)
+     VALUES ($1, 1, $2::jsonb, $3, true, now())
      ON CONFLICT (strategy_id, version) DO NOTHING
      RETURNING strategy_version_id`,
     [strategyId, json, hash],
   );
-  const strategyVersionId =
-    inserted.rows[0]?.strategy_version_id ??
-    (
-      await db.query<{ strategy_version_id: string }>(
-        `SELECT strategy_version_id FROM strategy_versions WHERE strategy_id = $1 AND version = 1`,
-        [strategyId],
-      )
-    ).rows[0]!.strategy_version_id;
-  return { strategyVersionId, config };
+  if (inserted.rows[0]) {
+    return { strategyVersionId: inserted.rows[0].strategy_version_id, config };
+  }
+  // A version 1 already existed (concurrent seed): fall back to the lowest one.
+  const fallback = await db.query<{ strategy_version_id: string; config: unknown }>(
+    `SELECT strategy_version_id, config FROM strategy_versions
+     WHERE strategy_id = $1 ORDER BY version ASC LIMIT 1`,
+    [strategyId],
+  );
+  return {
+    strategyVersionId: fallback.rows[0]!.strategy_version_id,
+    config: parseConfig(fallback.rows[0]!.config),
+  };
 }
 
 function parseConfig(raw: unknown): FlexiConfig {

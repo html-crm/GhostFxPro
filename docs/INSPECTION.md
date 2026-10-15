@@ -101,7 +101,7 @@ Explicitly out of scope until separately approved:
 | R4 | Ambiguous legacy records silently reassigned | Separate `legacy_import_fills` table flagged `needs_reconciliation` |
 | R5 | Stale market data driving execution | Decision contract carries quote timestamp/freshness; enforced in Phase 8 |
 | R6 | Frontend becoming source of truth | All figures derived from backend/DB; frontend is display only |
-| R7 | Silent strategy rule conflicts | Versioned strategy definitions + explicit precedence (Phase 8) |
+| R7 | Silent strategy rule conflicts | Versioned strategy definitions + explicit precedence — implemented: `StrategyRule` priority list, versioned configs, comparison report before activation |
 
 ## 6. Status legend used throughout
 

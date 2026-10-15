@@ -23,6 +23,7 @@ import { registerBotRoutes } from "./routes/bot.ts";
 import { registerMarketRoutes } from "./routes/market.ts";
 import { registerAlertRoutes } from "./routes/alerts.ts";
 import { registerWalletRoutes } from "./routes/wallets.ts";
+import { registerStrategyRoutes } from "./routes/strategies.ts";
 
 export interface AppConfig {
   sessionTtlMs: number;
@@ -118,6 +119,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerMarketRoutes(app, ctx);
   registerAlertRoutes(app, ctx);
   registerWalletRoutes(app, ctx);
+  registerStrategyRoutes(app, ctx);
 
   return app;
 }

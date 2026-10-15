@@ -5,15 +5,29 @@ import type {
   FlexiConfig,
   PositionState,
   Quote,
+  TriggeringRule,
 } from "./types.ts";
 
 export type StrategyKind = "FLEXI";
 
-/** A pluggable strategy: config + a pure evaluator. */
+/** A rule the engine can fire, with an explicit, documented precedence. */
+export interface StrategyRule {
+  id: NonNullable<TriggeringRule>;
+  /** Human-readable name. */
+  label: string;
+  /** Lower runs first when several rules could fire on one observation. */
+  priority: number;
+  /** What the rule does, including what it deliberately does NOT do. */
+  description: string;
+}
+
+/** A pluggable strategy: config + a pure evaluator + explicit rule precedence. */
 export interface Strategy {
   kind: StrategyKind;
   version: number;
   defaultConfig: FlexiConfig;
+  /** Rules in priority order. Precedence is explicit, never implicit. */
+  rules: readonly StrategyRule[];
   evaluate(
     state: PositionState,
     quote: Quote,
@@ -36,10 +50,43 @@ export const FLEXI_DEFAULT_CONFIG: FlexiConfig = {
   stopLossPct: null,
 };
 
+/**
+ * FLEXI rule precedence, highest priority first. This is the explicit answer
+ * to "what wins when several rules could fire on the same tick":
+ *   1. A configured stop-loss always takes priority (protects downside).
+ *   2. Arming the take-profit never sells on its own.
+ *   3. The trailing exit is only reachable once armed.
+ * The engine evaluates them in this order and returns on the first match.
+ */
+export const FLEXI_RULES: readonly StrategyRule[] = [
+  {
+    id: "stop_loss",
+    label: "Hard stop-loss",
+    priority: 1,
+    description:
+      "When a stop-loss fraction is configured, sells immediately if price reaches the stop level. Disabled (null) by default.",
+  },
+  {
+    id: "take_profit_arm",
+    label: "Arm take-profit",
+    priority: 2,
+    description:
+      "Arms the trailing exit once price reaches the take-profit threshold. Arming never sells on its own.",
+  },
+  {
+    id: "trailing_exit",
+    label: "Trailing exit",
+    priority: 3,
+    description:
+      "Once armed, sells after price sits the trailing distance below the peak for the configured number of consecutive polls.",
+  },
+];
+
 const FLEXI: Strategy = {
   kind: "FLEXI",
   version: 1,
   defaultConfig: FLEXI_DEFAULT_CONFIG,
+  rules: FLEXI_RULES,
   evaluate: evaluateFlexi,
 };
 
@@ -52,11 +99,30 @@ export function getStrategy(kind: StrategyKind): Strategy {
 }
 
 /**
- * Validates and normalizes a config. Unknown/invalid values are rejected
- * rather than defaulted, so a bad persisted config fails loudly.
+ * Validates and normalizes a config. Only the known fields are kept, so a
+ * persisted config can never accumulate stray keys (which would change the
+ * config_hash for no reason). Missing fields fall back to the documented
+ * defaults; present-but-invalid fields are rejected rather than defaulted, so
+ * a bad config fails loudly.
  */
-export function normalizeConfig(input: Partial<FlexiConfig>): FlexiConfig {
-  const cfg: FlexiConfig = { ...FLEXI_DEFAULT_CONFIG, ...input };
+export function normalizeConfig(
+  input: Partial<Record<keyof FlexiConfig, unknown>>,
+): FlexiConfig {
+  const src = input ?? {};
+  const cfg: FlexiConfig = {
+    takeProfitArmPct: num(src.takeProfitArmPct, FLEXI_DEFAULT_CONFIG.takeProfitArmPct),
+    trailingPercent: num(src.trailingPercent, FLEXI_DEFAULT_CONFIG.trailingPercent),
+    trailingConfirmations: num(
+      src.trailingConfirmations,
+      FLEXI_DEFAULT_CONFIG.trailingConfirmations,
+    ),
+    stopLossPct:
+      src.stopLossPct === undefined
+        ? FLEXI_DEFAULT_CONFIG.stopLossPct
+        : src.stopLossPct === null
+          ? null
+          : num(src.stopLossPct, Number.NaN),
+  };
   assertPct("takeProfitArmPct", cfg.takeProfitArmPct);
   assertPct("trailingPercent", cfg.trailingPercent);
   if (!Number.isInteger(cfg.trailingConfirmations) || cfg.trailingConfirmations < 1) {
@@ -64,6 +130,12 @@ export function normalizeConfig(input: Partial<FlexiConfig>): FlexiConfig {
   }
   if (cfg.stopLossPct !== null) assertPct("stopLossPct", cfg.stopLossPct);
   return cfg;
+}
+
+function num(value: unknown, fallback: number): number {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "number") return value;
+  return Number(value);
 }
 
 function assertPct(name: string, value: number): void {

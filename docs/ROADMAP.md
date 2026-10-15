@@ -8,15 +8,15 @@ Status legend: **Done** | **In progress** | **Planned** | **Blocked** | **Not st
 | 2 | Database schema & identity model | **Done** (`packages/db/migrations`, 13 tests pass) |
 | 3 | Auth & secure admin bootstrap | **Done** (`apps/api`, `packages/security`, 45 tests pass) |
 | 4 | Frontend design system & navigation | **Done** (`apps/web`, verified running) |
-| 5 | Read-only market data & wallet views | **Done for paper** (`packages/bot/market`, DEX Screener + mock) |
-| 6 | Live open-position interface | **Done for paper** (open/evaluate/close UI + API) |
-| 7 | Trade accounting & reconciliation | **Done for paper** (double-entry ledger, exact decimals, 40 api tests) |
-| 8 | Strategy engine & AI decision pipeline | **Done for paper** (FLEXI engine + risk gates); AI Brain **Blocked** |
+| 5 | Read-only market data & wallet views | **Done for paper** (DEX Screener search + live watch-only wallet balances) |
+| 6 | Live open-position interface | **Done for paper** (open/evaluate/close UI + API, passive alerts) |
+| 7 | Trade accounting & reconciliation | **Done for paper** (double-entry ledger, exact decimals) |
+| 8 | Strategy engine & AI decision pipeline | **Done for paper** (FLEXI engine, risk gates, versioned configs with compare/activate/rollback + explicit rule precedence); AI Brain **Blocked** |
 | 9 | Simulated execution (Rust engine) | **Not started** (paper fills are simulated in TS) |
 | 10 | Authorized integration testing | **Blocked** (no creds/env) |
 | 11 | Security & production-readiness review | **Planned** |
 
-Total automated tests: **104 passing** (31 bot + 13 db + 20 security + 40 api).
+Total automated tests: **184 passing** (60 bot + 13 db + 20 security + 91 api).
 
 ## Phase 3 deliverables
 

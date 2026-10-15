@@ -14,9 +14,17 @@ export {
   getStrategy,
   normalizeConfig,
   FLEXI_DEFAULT_CONFIG,
+  FLEXI_RULES,
   type Strategy,
   type StrategyKind,
+  type StrategyRule,
 } from "./strategy/registry.ts";
+export {
+  compareFlexiConfig,
+  type ConfigChange,
+  type ConfigComparison,
+  type FlexiConfigKey,
+} from "./strategy/compare.ts";
 
 export {
   checkQuoteFreshness,

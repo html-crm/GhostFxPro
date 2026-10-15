@@ -443,3 +443,98 @@ export async function deleteWalletAction(formData: FormData): Promise<void> {
 export async function refreshWalletsAction(): Promise<void> {
   revalidateWallets();
 }
+
+// ---------------------------------------------------------------------------
+// Strategies (versioned configuration; never places an order on its own).
+// ---------------------------------------------------------------------------
+
+function revalidateStrategies(): void {
+  revalidatePath("/strategies");
+}
+
+export async function createStrategyVersionAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = await getToken();
+  if (!token) return { error: "not_authenticated" };
+
+  const armPct = Number(formData.get("takeProfitArmPct"));
+  const trailingPct = Number(formData.get("trailingPercent"));
+  const confirmations = Number(formData.get("trailingConfirmations"));
+  const stopRaw = String(formData.get("stopLossPct") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (!Number.isFinite(armPct) || armPct <= 0 || armPct >= 100) {
+    return { error: "Take-profit arm must be a percentage between 0 and 100." };
+  }
+  if (!Number.isFinite(trailingPct) || trailingPct <= 0 || trailingPct >= 100) {
+    return { error: "Trailing distance must be a percentage between 0 and 100." };
+  }
+  if (!Number.isInteger(confirmations) || confirmations < 1) {
+    return { error: "Confirmations must be a positive whole number." };
+  }
+  let stopLossPct: number | null = null;
+  if (stopRaw) {
+    const s = Number(stopRaw);
+    if (!Number.isFinite(s) || s <= 0 || s >= 100) {
+      return { error: "Stop-loss must be a percentage between 0 and 100 (blank disables it)." };
+    }
+    stopLossPct = s / 100;
+  }
+
+  const config = {
+    takeProfitArmPct: armPct / 100,
+    trailingPercent: trailingPct / 100,
+    trailingConfirmations: confirmations,
+    stopLossPct,
+  };
+
+  const res = await apiFetch<{ error?: string }>("/strategies/versions", {
+    method: "POST",
+    token,
+    body: { config, ...(note ? { note } : {}) },
+  });
+  if (!res.ok) {
+    const code = (res.data as { error?: string } | null)?.error ?? "create_failed";
+    if (code === "duplicate_version") {
+      return { error: "That configuration already exists as a version." };
+    }
+    if (code === "invalid_config") return { error: "Check the configuration values." };
+    return { error: "Could not save the version." };
+  }
+  revalidateStrategies();
+  return { ok: true };
+}
+
+export async function activateStrategyVersionAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const versionId = String(formData.get("versionId"));
+  await apiFetch(`/strategies/versions/${versionId}/activate`, {
+    method: "POST",
+    token,
+  });
+  revalidateStrategies();
+}
+
+export async function deleteStrategyVersionAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const versionId = String(formData.get("versionId"));
+  await apiFetch(`/strategies/versions/${versionId}`, { method: "DELETE", token });
+  revalidateStrategies();
+}
+
+export async function updateStrategyNoteAction(formData: FormData): Promise<void> {
+  const token = await getToken();
+  if (!token) redirect("/login");
+  const versionId = String(formData.get("versionId"));
+  const note = String(formData.get("note") ?? "").trim();
+  await apiFetch(`/strategies/versions/${versionId}`, {
+    method: "PATCH",
+    token,
+    body: { note },
+  });
+  revalidateStrategies();
+}
