@@ -13,10 +13,10 @@ Status legend: **Done** | **In progress** | **Planned** | **Blocked** | **Not st
 | 7 | Trade accounting & reconciliation | **Done for paper** (double-entry ledger, exact decimals) |
 | 8 | Strategy engine & AI decision pipeline | **Done for paper** (FLEXI engine, risk gates, versioned configs with compare/activate/rollback + explicit rule precedence); AI Brain **Blocked** |
 | 9 | Simulated execution (Rust engine) | **Not started** (paper fills are simulated in TS) |
-| 10 | Authorized integration testing | **Blocked** (no creds/env) |
+| 10 | Authorized integration testing | **In progress** (status/eligibility page shipped; live execution still blocked — no creds/env) |
 | 11 | Security & production-readiness review | **Planned** |
 
-Total automated tests: **184 passing** (60 bot + 13 db + 20 security + 91 api).
+Total automated tests: **192 passing** (60 bot + 13 db + 20 security + 99 api).
 
 ## Phase 3 deliverables
 

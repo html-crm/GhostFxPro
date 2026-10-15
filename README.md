@@ -3,7 +3,7 @@
 Production-grade multi-chain crypto trading platform. Built **correctness-first**,
 then security, observability, and finally features and visual polish.
 
-> **Status: Phases 1-6 (paper trading).** The trading engine runs in **dry-run
+> **Status: Phases 1-8 (paper trading).** The trading engine runs in **dry-run
 > (paper)** mode only. Live execution is disabled by default and nothing in this
 > repo submits real orders. See `docs/ROADMAP.md`.
 
@@ -108,11 +108,16 @@ PostgreSQL installed). The PGlite dev server is exercised instead.
 | Strategy engine (FLEXI) + risk + market data | Implemented, tested (31 tests) |
 | Paper trading engine (open/evaluate/close, P&L, ledger) | Implemented, tested (40 tests) |
 | Schedulable bot runner (start/stop, status, single-flight) | Implemented, tested (11 tests) |
-| Web UI (auth, dashboard, positions, markets, portfolio, history, admin, MFA) | Implemented, verified running |
+| Alerts (passive price/position, never place orders) | Implemented, tested |
+| DEX Screener token discovery | Implemented, verified live |
+| Watch-only multi-chain wallets (live RPC balances) | Implemented, tested |
+| Strategy versioning (draft / compare / activate / rollback) | Implemented, tested |
+| Exchange integration status (read-only, no order surface) | Implemented, tested |
+| Web UI (auth, dashboard, positions, markets, portfolio, history, admin, MFA, alerts, wallets, strategies, exchange) | Implemented, verified running |
 | Live execution / real DEX orders | Not implemented (requires credentials + explicit approval) |
 | Python AI Brain | Blocked (no Python runtime) |
 
-**Total: 115 automated tests passing; all workspaces typecheck clean.**
+**Total: 192 automated tests passing; all workspaces typecheck clean.**
 
 ### Bot engine
 
